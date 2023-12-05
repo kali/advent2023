@@ -21,12 +21,35 @@ impl Map {
         Map(it)
     }
 
-    fn tr(&self, x: usize) -> usize {
-        let range: usize = self
-            .0
+    fn locate(&self, x: usize) -> usize {
+        self.0
             .binary_search_by_key(&x, |b| b.0)
-            .unwrap_or_else(|e| e - 1);
+            .unwrap_or_else(|e| e - 1)
+    }
+
+    fn tr(&self, x: usize) -> usize {
+        let range = self.locate(x);
         (x as isize + self.0.get(range).map(|p| p.1).unwrap_or(0)) as usize
+    }
+
+    fn compose(&self, rhs: &Map) -> Map {
+        let mut current = 0;
+        let mut result: Vec<(usize, isize)> = vec![];
+        loop {
+            let prime = self.tr(current);
+            result.push((current, (rhs.tr(prime) as isize - current as isize)));
+            let locate_left = self.locate(current);
+            let len_left = self.0.get(locate_left + 1).map(|x| x.0 - current);
+            let locate_right = rhs.locate(prime);
+            let len_right = rhs.0.get(locate_right + 1).map(|x| x.0 - prime);
+            let len = [len_left, len_right].into_iter().flat_map(|x| x).min();
+            if let Some(len) = len {
+                current += len;
+            } else {
+                break;
+            }
+        }
+        Map(result)
     }
 }
 
@@ -71,14 +94,24 @@ fn run(input: &str) -> anyhow::Result<(usize, usize)> {
         .map(|s| maps.iter().fold(*s, |x, map| map.tr(x)))
         .min()
         .unwrap();
+    let global = maps.iter().fold(Map(vec![(0, 0)]), |g, i| g.compose(i));
     let p2 = seeds
         .iter()
         .chunks(2)
         .into_iter()
-        .flat_map(|mut pair| {
+        .map(|mut pair| {
             let start = *pair.next().unwrap();
             let len = *pair.next().unwrap();
-            (start..start + len).map(|s| maps.iter().fold(s, |x, map| map.tr(x)))
+            let left = global.tr(start);
+            global
+                .0
+                .iter()
+                .skip(global.locate(start))
+                .take_while(|pair| pair.0 < start + len)
+                .map(|pair| (pair.0 as isize + pair.1) as usize)
+                .min()
+                .unwrap()
+                .min(left)
         })
         .min()
         .unwrap();
