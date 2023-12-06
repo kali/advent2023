@@ -21,22 +21,10 @@ fn main() -> anyhow::Result<()> {
 
     let time = times.iter().join("").parse::<usize>()?;
     let best = bests.iter().join("").parse::<usize>()?;
-    let (left, right) = [(0, time / 2), (time, time / 2)]
-        .into_iter()
-        .map(|(mut looser, mut winner)| {
-            while looser.abs_diff(winner) > 1 {
-                let next = (looser + winner) / 2;
-                if next * (time - next) < best {
-                    looser = next;
-                } else {
-                    winner = next
-                };
-            }
-            looser.min(winner)
-        })
-        .collect_tuple()
-        .unwrap();
-    let p2 = right - left;
-    dbg!(p2);
+    // load*(time-load) = best    <=>    load^2 - time*load + best = 0
+    let delta_sqrt = ((time * time - 4 * best) as f64).sqrt();
+    let left = ((time as f64 - delta_sqrt) / 2.).floor() as usize;
+    let right = ((time as f64 + delta_sqrt) / 2.).floor() as usize;
+    dbg!(right - left);
     Ok(())
 }
